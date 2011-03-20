@@ -80,7 +80,7 @@ def check(parser, rpc, opts, args):
         before_rpc('Checking status of %s...' % (arg, ))
         sys.stdout.flush()
         res = rpc.call('check_availability', { 'domain' : arg })
-        if res['available']:
+        if res['available'] == 'True':
             after_rpc_success('Available!')
         else:
             after_rpc_failure('Taken :(!')
@@ -92,7 +92,7 @@ def register(parser, rpc, opts, args):
     for arg in args:
         before_rpc('Trying to register %s...' % arg)
         res = rpc.call('register_domain', { 'domain' : arg })
-        if res['success']:
+        if res['success'] == 'True':
             after_rpc_success('success!')
         else:
             after_rpc_failure('failure!')
