@@ -1,0 +1,22 @@
+== What is it ==
+
+DomainCLI is a simple command-line interface for registering domain names:
+
+  gdb@inferno:~$ domaincli check domaincli.com
+  Checking status of domaincli.com... Available!
+  gdb@inferno:~$ domaincli register domaincli.com
+  Trying to register tseaute.com... success!
+   \--> Congatulations!  You now own domaincli.com
+
+== Installation ==
+
+Download and run the 'domaincli' script on your machine.  There should be no
+dependencies beyond the Python that came with your Linux or Mac.  If you run
+into any compatibility or dependency problems, please email
+gdb@gregbrockman.com.
+
+== Contact ==
+
+Feel free to contact me at gdb@gregbrockman.com with comments, questions,
+suggetions, complaints, angry letters, happy letters, apathetic letters, musings
+about life, and the like.
