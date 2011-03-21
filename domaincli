@@ -24,8 +24,7 @@ class DomainCLIError(Exception):
 
 class RPC(object):
     # Yeah yeah yeah, I know.  I'll buy an SSL cert for domaincli.com soon.
-    # URL = 'https://getpokebot.com:7000/v1'
-    URL = 'http://localhost:8000/v1'
+    URL = 'https://getpokebot.com:7000/v1'
 
     def __init__(self, config=None):
         self.config = config
@@ -107,7 +106,10 @@ def register(parser, opts, args):
     else:
         domains = '%d domains' % len(args)
     total = 12 * opts.years * len(args)
-    print 'Your total comes to $%d (%s x %s)' % (total, years, domains)
+    total_msg = '* Your total comes to $%d (%s x %s) *' % (total, years, domains)
+    print '*' * len(total_msg)
+    print total_msg
+    print '*' * len(total_msg)
     card = get_card(config, rpc, opts)
     ok = raw_input('Are you cool with this purchase? [Yn] ')
     if ok.lower() == 'n':
