@@ -12,12 +12,28 @@ DomainCLI is a simple command-line interface for registering domain names:
   Trying to register asnthoeusnhoaeu.com... success!
    \--> Congatulations!  You now own domaincli.com.
 
-== Installation ==
+== Client Installation ==
 
-Download and run the 'domaincli' script on your machine.  There should be no
-dependencies beyond the Python that came with your Linux or Mac.  If you run
-into any compatibility or dependency problems, please email
+Download and run the 'domaincli' script on your machine.  That's it.
+
+There should be no dependencies beyond the Python that came with your Linux or
+Mac.  If you run into any compatibility or dependency problems, please email
 gdb@gregbrockman.com.
+
+By default, you'll be using the domaincli.com servers to register domains, but
+you're welcome to set up your own DomainCLI server instance as described below.
+
+== Server Installation ==
+
+Currently, the domaincli server is built on top of the internetbs.com API.  The
+file server/conf.sample.yaml contains test credentials for the API, so you can
+develop without doing anything special.  Copy the file server/conf.sample.yaml
+to server/conf.yaml and you should be good to go (modulo dependencies).  Run
+'server/bin/domaincli-server' to get started.
+
+To run in production, you'd have to sign up for an internetbs.com API reseller
+account.  It's pretty painless to do, but it does require a $65 minimum deposit
+to get up and running - sorry.
 
 == Current functionality ==
 
