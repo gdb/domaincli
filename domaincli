@@ -98,7 +98,20 @@ def register(parser, opts, args):
     config = load_config(opts)
     rpc = RPC(config)
     nameservers = get_nameservers(config, opts)
+    if opts.years == 1:
+        years = '1 year'
+    else:
+        years = '%d years' % opts.years
+    if len(args) == 1:
+        domains = '1 domain'
+    else:
+        domains = '%d domains' % len(args)
+    total = 12 * opts.years * len(args)
+    print 'Your total comes to $%d (%s x %s)' % (total, years, domains)
     card = get_card(config, rpc, opts)
+    ok = raw_input('Are you cool with this purchase? [Yn] ')
+    if ok.lower() == 'n':
+        print 'As you wish.  Aborting without making a purchase!'
     for arg in args:
         before_rpc('Trying to register %s...' % arg)
         res = rpc.call('register_domain', { 'domain' : arg,
@@ -158,11 +171,12 @@ def get_nameservers(config, opts):
         save_config(config, opts)
 
 def get_card(config, rpc, opts):
-    card = rpc.call('domaincli_get_card')
-    if card['object'] == 'result':
-        card = None
-    if not card:
-        print "Your purchase today comes to %d"
+    card = None
+    if not opts.new_card:
+        card = rpc.call('domaincli_get_card')
+        if card['object'] == 'result':
+            card = None
+    while not card:
         print "Please enter your credit card details below"
         print "(Your credit card information is stored with Stripe,"
         print " a PCI level-one compliant payment processor, and never"
@@ -172,12 +186,13 @@ def get_card(config, rpc, opts):
         exp_year = raw_input('Expire year: ')
         if len(exp_year) == 2:
             exp_year = '20%s' % exp_year
-        card = { 'number' : number, 'exp_month' : exp_month, 'exp_year' : exp_year }
+        real_card = { 'number' : number, 'exp_month' : exp_month, 'exp_year' : exp_year }
         sclient = StripeClient('26OjYWkUnwDegILl9ZNVbefRjRboRSio')
-        res = sclient.createCard(card=card)
+        # TODO: catch these exceptions
+        res = sclient.createCard(card=real_card)
         res = rpc.call('domaincli_add_card', { 'card_token' : res.id })
         card = res
-        print card
+    return card
 
 def save_config(config, opts):
     path = os.path.expanduser(opts.config_file)
