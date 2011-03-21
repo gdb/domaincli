@@ -363,7 +363,10 @@ def main():
     if prog == 'check':
         parser = optparse.OptionParser("""%prog [options] check domain [domain...]""")
     elif prog == 'register':
-        parser = optparse.OptionParser("""%prog [options] register domain [domain...]""")
+        parser = optparse.OptionParser("""%prog [options] register domain [domain...]
+
+Supported domain names are com, info, net, org, us.  Please let us
+know if you'd like to see additional supported domains (gdb@gregbrockman.com)""")
         parser.add_option('-s', '--name-server', help='Nameservers for registered domain [can pass multiple times. Defaults to list in config file]',
                           dest='nameservers', action='append', default=[])
         parser.add_option('-y', '--years', help='Number of years to register for',
