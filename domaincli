@@ -25,6 +25,7 @@ class DomainCLIError(Exception):
 class RPC(object):
     # Yeah yeah yeah, I know.  I'll buy an SSL cert for domaincli.com soon.
     URL = 'https://getpokebot.com:7000/v1'
+    # URL = 'http://localhost:8000/v1'
 
     def __init__(self, config=None):
         self.config = config

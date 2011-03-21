@@ -5,8 +5,12 @@ DomainCLI is a simple command-line interface for registering domain names:
   gdb@inferno:~$ domaincli check domaincli.com
   Checking status of domaincli.com... Available!
   gdb@inferno:~$ domaincli register domaincli.com
-  Trying to register tseaute.com... success!
-   \--> Congatulations!  You now own domaincli.com
+  ***********************************************
+  * Your total comes to $12 (1 year x 1 domain) *
+  ***********************************************
+  Are you cool with this purchase? [Yn] y
+  Trying to register asnthoeusnhoaeu.com... success!
+   \--> Congatulations!  You now own domaincli.com.
 
 == Installation ==
 
@@ -14,6 +18,21 @@ Download and run the 'domaincli' script on your machine.  There should be no
 dependencies beyond the Python that came with your Linux or Mac.  If you run
 into any compatibility or dependency problems, please email
 gdb@gregbrockman.com.
+
+== Current functionality ==
+
+Currently one can query whether a domain is owned, purchase a domain, and set
+nameservers.  All domains (currently com, info, net, org, us) are $12.
+
+== Future directions ==
+
+- Add automatic Route53 setup, allowing complete DNS control from the
+  command-line.
+- Automatically set up Google Apps For Your Domain
+- Tons of generic domain actions.
+
+This project is mainly a proof-of-concept, so let me know if there are any
+particularly interesting features you'd like to see developed.
 
 == Contact ==
 
