@@ -114,6 +114,7 @@ def after_rpc_failure(msg):
 
 ### Config
 re_ns = re.compile('^([a-z0-9]([-a-z0-9]*[a-z0-9])?\\.)+((a[cdefgilmnoqrstuwxz]|aero|arpa)|(b[abdefghijmnorstvwyz]|biz)|(c[acdfghiklmnorsuvxyz]|cat|com|coop)|d[ejkmoz]|(e[ceghrstu]|edu)|f[ijkmor]|(g[abdefghilmnpqrstuwy]|gov)|h[kmnrtu]|(i[delmnoqrst]|info|int)|(j[emop]|jobs)|k[eghimnprwyz]|l[abcikrstuvy]|(m[acdghklmnopqrstuvwxyz]|mil|mobi|museum)|(n[acefgilopruz]|name|net)|(om|org)|(p[aefghklmnrstwy]|pro)|qa|r[eouw]|s[abcdeghijklmnortvyz]|(t[cdfghjklmnoprtvwz]|travel)|u[agkmsyz]|v[aceginu]|w[fs]|y[etu]|z[amw])$', re.IGNORECASE)
+re_ip = re.compile('^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')
 def get_nameservers(config, parser, rpc, opts, args):
     nameservers = opts.nameservers
     if not nameservers:
@@ -124,7 +125,7 @@ def get_nameservers(config, parser, rpc, opts, args):
     while True:
         if nameservers:
             for ns in [ns.strip() for ns in nameservers.split(',')]:
-                if re_ns.search(ns):
+                if all([re_ns.search(n) or re_ip.search(n) for n in ns.split(' ')]):
                     continue
                 print "Uh-oh: There are invalid characters in one of your nameservers (%r)" % ns
                 print "Nameservers can only be domain names and IP addresses."
