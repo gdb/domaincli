@@ -1,0 +1,98 @@
+#!/usr/bin/env python
+import datetime
+import logging
+import optparse
+import os
+import sys
+import traceback
+import urlparse
+
+import SimpleHTTPServer
+import SocketServer
+import cStringIO
+
+# A bit of a hack
+sys.path[0:0] = [os.path.join(os.path.dirname(__file__), '../lib')]
+import domaincli
+
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+
+class Server(SocketServer.TCPServer):
+    allow_reuse_address = True
+
+class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        self.cli = domaincli.DomainCLI()
+        SimpleHTTPServer.SimpleHTTPRequestHandler.__init__(self, *args, **kwargs)
+
+    def respond(self, code, resp):
+        content = self.cli._encode(resp)
+        length = len(content)
+        logger.info("[%d] About to send %d bytes: %r" % (code, length, content))
+
+        self.send_response(code)
+        self.send_header('Content-Type', 'text/plain')
+        self.send_header('Content-Length', str(length))
+        self.send_header('Connection', 'close')
+        self.end_headers()
+        self.wfile.write(content)
+        print 'Responding with: %r' % content
+        print 'END [%s]' % (datetime.datetime.now(), )
+        return content
+
+    def do_GET(self):
+        code, resp = self.get()
+        return self.respond(code, resp)
+
+    def do_POST(self):
+        try:
+            req_length = int(self.headers['content-length'])
+            self.raw_body = self.rfile.read(req_length)
+            self.body = urlparse.parse_qs(self.raw_body, strict_parsing=True)
+            for k, v in self.body.items():
+                self.body[k] = v[0]
+        except Exception as e:
+            print "Error: %r" % e
+            return self.respond(500, { 'object' : 'error', 'message' : 'An unknown error occurred' })
+        print 'BEG [%s]: %r / %r' % (datetime.datetime.now(), dict(self.headers), self.raw_body)
+
+        try:
+            code, resp = self.post()
+        except (domaincli.TheirFault, domaincli.YourFault) as e:
+            return self.respond(200, { 'object' : 'error', 'message' : e.message })
+        except Exception as e:
+            logger.error('Error: %s (%s)' % (e, traceback.format_exc(e)))
+            return self.respond(500, { 'object' : 'error', 'message' : 'An unknown error occurred' })
+        return self.respond(code, resp)
+
+    def get(self):
+        resp = { 'object' : 'error', 'message' : 'Invalid request method.  Should be POSTing' }
+        return 404, resp
+
+    def post(self):
+        rpc = 'rpc_%s' % self.body['method']
+        if hasattr(self.cli, rpc):
+            return 200, getattr(self.cli, rpc)(self.body)
+        else:
+            return 404, { 'object' : 'error', 'message' : 'No such method' }
+
+def main():
+    parser = optparse.OptionParser("""%prog [options]""")
+    parser.add_option('-v', '--verbosity', help='Verbosity of debugging output.',
+                      dest='verbosity', action='count', default=0)
+    parser.add_option('-p', '--port', help='Port on which to run server',
+                      dest='port', type=int, default=8000)
+    opts, args = parser.parse_args()
+    if opts.verbosity == 1:
+        logging.getLogger('').setLevel(logging.INFO)
+    elif opts.verbosity >= 2:
+        logging.getLogger('').setLevel(logging.DEBUG)
+    if len(args):
+        parser.print_help()
+        return 1
+    httpd = Server(("", opts.port), Handler)
+    httpd.serve_forever()
+
+if __name__ == '__main__':
+    sys.exit(main())
