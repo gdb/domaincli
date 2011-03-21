@@ -45,6 +45,8 @@ nameservers.  All domains (currently com, info, net, org, us) are $12.
 - Add automatic Route53 setup, allowing complete DNS control from the
   command-line.
 - Automatically set up Google Apps For Your Domain
+- Improve UI and onboarding flow (shouldn't prompt for nameservers during initial
+  domain purchase, etc.)
 - Tons of generic domain actions.
 
 This project is mainly a proof-of-concept, so let me know if there are any
@@ -55,3 +57,8 @@ particularly interesting features you'd like to see developed.
 Feel free to contact me at gdb@gregbrockman.com with comments, questions,
 suggetions, complaints, angry letters, happy letters, apathetic letters, musings
 about life, and the like.
+
+== License ==
+
+DomainCLI is released under the MIT license.  Feel free to do whatever you want
+with the code.  Patches welcome.
