@@ -97,7 +97,7 @@ def register(parser, opts, args):
         return 1
     config = load_config(opts)
     rpc = RPC(config)
-    nameservers = get_nameservers(config, opts)
+    nameservers = get_nameservers(config, opts, args)
     if opts.years == 1:
         years = '1 year'
     else:
@@ -115,10 +115,10 @@ def register(parser, opts, args):
     for arg in args:
         before_rpc('Trying to register %s...' % arg)
         res = rpc.call('register_domain', { 'domain' : arg,
-                                            'nameservers' : nameservers,
                                             'years' : opts.years })
         if res['success'] == 'True':
             after_rpc_success('success!')
+            rpc.call('set_nameservers', { 'nameservers' : nameservers, 'domain' : arg })
         else:
             after_rpc_failure('failure!')
         print ' \-->', res['message']
@@ -138,7 +138,7 @@ def after_rpc_failure(msg):
 ### Config
 re_ns = re.compile('^([a-z0-9]([-a-z0-9]*[a-z0-9])?\\.)+((a[cdefgilmnoqrstuwxz]|aero|arpa)|(b[abdefghijmnorstvwyz]|biz)|(c[acdfghiklmnorsuvxyz]|cat|com|coop)|d[ejkmoz]|(e[ceghrstu]|edu)|f[ijkmor]|(g[abdefghilmnpqrstuwy]|gov)|h[kmnrtu]|(i[delmnoqrst]|info|int)|(j[emop]|jobs)|k[eghimnprwyz]|l[abcikrstuvy]|(m[acdghklmnopqrstuvwxyz]|mil|mobi|museum)|(n[acefgilopruz]|name|net)|(om|org)|(p[aefghklmnrstwy]|pro)|qa|r[eouw]|s[abcdeghijklmnortvyz]|(t[cdfghjklmnoprtvwz]|travel)|u[agkmsyz]|v[aceginu]|w[fs]|y[etu]|z[amw])$', re.IGNORECASE)
 re_ip = re.compile('^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')
-def get_nameservers(config, opts):
+def get_nameservers(config, opts, args):
     nameservers = opts.nameservers
     if not nameservers:
         try:
