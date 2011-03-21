@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# TODO: nuke json dependency
+import json
 import logging
 import optparse
 import os
@@ -24,6 +26,9 @@ class RPC(object):
     # Yeah yeah yeah, I know.  I'll buy an SSL cert for domaincli.com soon.
     # URL = 'https://getpokebot.com:7000/v1'
     URL = 'http://localhost:8000/v1'
+
+    def __init__(self, config=None):
+        self.config = config
 
     # Stolen from Stripe
     def _encodeInner(self, d):
@@ -53,7 +58,10 @@ class RPC(object):
 
     def call(self, name, args={}):
         args['method'] = name
+        if self.config:
+            args['user_id'] = self.config.get('DomainCLI', 'user_id')
         serialized = self._encode(args)
+        logger.debug('About to call %s with params %r' % (self.URL, args))
         try:
             c = urllib2.urlopen(self.URL, serialized)
         except urllib2.URLError, e:
@@ -68,11 +76,12 @@ class RPC(object):
         return resp
 
 ### Valid subprograms
-def check(parser, rpc, opts, args):
+def check(parser, opts, args):
     if len(args) == 0:
         parser.print_help()
         return 1
-    config = load_config(parser, rpc, opts, args)
+    config = load_config(opts)
+    rpc = RPC(config)
     for arg in args:
         before_rpc('Checking status of %s...' % (arg, ))
         sys.stdout.flush()
@@ -82,13 +91,14 @@ def check(parser, rpc, opts, args):
         else:
             after_rpc_failure('Taken :(!')
 
-def register(parser, rpc, opts, args):
+def register(parser, opts, args):
     if len(args) == 0:
         parser.print_help()
         return 1
-    config = load_config(parser, rpc, opts, args)
-    nameservers = get_nameservers(config, parser, rpc, opts, args)
-    card = get_card(config, parser, rpc, opts, args)
+    config = load_config(opts)
+    rpc = RPC(config)
+    nameservers = get_nameservers(config, opts)
+    card = get_card(config, rpc, opts)
     for arg in args:
         before_rpc('Trying to register %s...' % arg)
         res = rpc.call('register_domain', { 'domain' : arg,
@@ -115,7 +125,7 @@ def after_rpc_failure(msg):
 ### Config
 re_ns = re.compile('^([a-z0-9]([-a-z0-9]*[a-z0-9])?\\.)+((a[cdefgilmnoqrstuwxz]|aero|arpa)|(b[abdefghijmnorstvwyz]|biz)|(c[acdfghiklmnorsuvxyz]|cat|com|coop)|d[ejkmoz]|(e[ceghrstu]|edu)|f[ijkmor]|(g[abdefghilmnpqrstuwy]|gov)|h[kmnrtu]|(i[delmnoqrst]|info|int)|(j[emop]|jobs)|k[eghimnprwyz]|l[abcikrstuvy]|(m[acdghklmnopqrstuvwxyz]|mil|mobi|museum)|(n[acefgilopruz]|name|net)|(om|org)|(p[aefghklmnrstwy]|pro)|qa|r[eouw]|s[abcdeghijklmnortvyz]|(t[cdfghjklmnoprtvwz]|travel)|u[agkmsyz]|v[aceginu]|w[fs]|y[etu]|z[amw])$', re.IGNORECASE)
 re_ip = re.compile('^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')
-def get_nameservers(config, parser, rpc, opts, args):
+def get_nameservers(config, opts):
     nameservers = opts.nameservers
     if not nameservers:
         try:
@@ -145,17 +155,36 @@ def get_nameservers(config, parser, rpc, opts, args):
         inp = raw_input('Nameservers: ')
         nameservers = ', '.join([ns.strip() for ns in inp.split(',')])
         config.set('DomainCLI', 'nameservers', nameservers)
-        save_config(config, parser, rpc, opts, args)
+        save_config(config, opts)
 
-def get_card(config, parser, rpc, opts, args):
-    pass
+def get_card(config, rpc, opts):
+    card = rpc.call('domaincli_get_card')
+    if card['object'] == 'result':
+        card = None
+    if not card:
+        print "Your purchase today comes to %d"
+        print "Please enter your credit card details below"
+        print "(Your credit card information is stored with Stripe,"
+        print " a PCI level-one compliant payment processor, and never"
+        print " touches our servers.)"
+        number = raw_input('Card number: ')
+        exp_month = raw_input('Expire month: ')
+        exp_year = raw_input('Expire year: ')
+        if len(exp_year) == 2:
+            exp_year = '20%s' % exp_year
+        card = { 'number' : number, 'exp_month' : exp_month, 'exp_year' : exp_year }
+        sclient = StripeClient('26OjYWkUnwDegILl9ZNVbefRjRboRSio')
+        res = sclient.createCard(card=card)
+        res = rpc.call('domaincli_add_card', { 'card_token' : res.id })
+        card = res
+        print card
 
-def save_config(config, parser, rpc, opts, args):
+def save_config(config, opts):
     path = os.path.expanduser(opts.config_file)
     # TODO: atomic write?  Getting that right is always kind of tricky.
     config.write(open(path, 'w'))
 
-def load_config(parser, rpc, opts, args):
+def load_config(opts):
     config = ConfigParser.ConfigParser()
     path = os.path.expanduser(opts.config_file)
     if os.path.exists(path):
@@ -187,14 +216,119 @@ def load_config(parser, rpc, opts, args):
                "%s" % opts.config_file)
     print '->', '\n-> '.join(textwrap.wrap(msg))
     before_rpc('-> Generating user ID...')
-    res = rpc.call('domaincli_create_account')
+    res = RPC().call('domaincli_create_account')
     after_rpc_success('done!')
-    config.add_section('DomainCLI')
+    try:
+        config.add_section('DomainCLI')
+    except ConfigParser.DuplicateSectionError:
+        pass
     config.set('DomainCLI', 'user_id', res['id'])
-    save_config(config, parser, rpc, opts, args)
+    save_config(config, opts)
     print("-> For your information, your user ID is\n"
           "->  %s\n" % res['id'])
     return config
+
+
+### Stripe
+class StripeResponse(object):
+  def __init__(self, d):
+    self.dict = d
+  
+  def __getattr__(self, name):
+    return self.dict[name]
+
+class StripeException(Exception):
+  def __init__(self, msg):
+    self.message = msg
+    super(StripeException, self).__init__(msg)
+  
+  def message(self):
+    self.message
+
+class StripeCardException(StripeException):
+  def __init__(self, resp):
+    self.code = resp.get('code', '')
+    self.param = resp.get('param', '')
+    super(StripeCardException, self).__init__(resp['message'])
+
+class StripeInvalidRequestException(StripeException):
+  def __init__(self, resp):
+    self.param = resp.get('param', '')
+    super(StripeInvalidRequestException, self).__init__(resp['message'])
+
+class StripeAPIException(StripeException):
+  pass
+
+class StripeAPIConnectionException(StripeException):
+  pass
+
+class StripeClient(object):
+  API_URL = 'https://api.stripe.com/v1'
+
+  def __init__(self, key):
+    self.key = key
+
+  def createCard(self, **params):
+    self.__requireParams(params, ['card'])
+    params['amount'] = 300
+    params['currency'] = 'usd'
+    return self.__req('execute_charge', params)
+
+  def __encodeInner(self, d):
+    """
+    We want post vars of form:
+    {'foo': 'bar', 'nested': {'a': 'b', 'c': 'd'}}
+    to become:
+    foo=bar&nested[a]=b&nested[c]=d
+    """
+    stk = []
+    for key, value in d.items():
+      if isinstance(value, dict):
+        n = {}
+        for k, v in value.items():
+          n["%s[%s]" % (key, k)] = v
+        stk.extend(self.__encodeInner(n))
+      else:
+        stk.append((key, value))
+    return stk
+
+  def __encode(self, d):
+    """
+    Internal: encode a string for url representation
+    """
+    return urllib.urlencode(self.__encodeInner(d))
+
+  def __requireParams(self, params, req):
+    """
+    Internal: strict verification of parameter list
+    """
+    for r in req:
+      if not params.has_key(r):
+        raise StripeInvalidRequestException({ 'message' : 'Missing required param: %s' % r })
+
+  def __req(self, meth, params):
+    """
+    Internal: mechanism for requesting an API call from the pay-server
+    """
+    params = params.copy()
+    params['method'] = meth
+    params['key'] = self.key
+    params['client'] = {'type':'binding', 'language':'python', 'version':'1.4.5'}
+    try:
+      c = urllib2.urlopen(self.API_URL, self.__encode(params))
+    except urllib2.URLError, e:
+      raise StripeAPIException("Could not connect to Stripe API: %s" % (e, ))
+    resp = json.loads(c.read())
+
+    if resp.get('error'):
+      err = {
+        'card_error': lambda resp: StripeCardException(resp),
+        'invalid_request_error': lambda resp: StripeInvalidRequestException(resp),
+        'api_error': lambda resp: StripeAPIException(resp['message'])
+      }
+      raise err[resp['error']['type']](resp['error'])
+    return StripeResponse(resp)
+### end stripe
 
 def main():
     programs = {'check' : check,
@@ -219,6 +353,9 @@ def main():
                           dest='nameservers', action='append', default=[])
         parser.add_option('-y', '--years', help='Number of years to register for',
                           dest='years', type=int, default=1)
+        parser.add_option('-c', '--new-card', help="Use a new credit card rather than the one on file (if one exists)",
+                          dest='new_card', action='store_true', default=False)
+
     else:
         prog = None
         parser = optparse.OptionParser("""%%prog [options] %s""" % '|'.join(programs.iterkeys()))
@@ -239,9 +376,8 @@ def main():
         parser.print_help()
         return 1
     else:
-        rpc = RPC()
         logger.debug('About to call %s with %r / %r' % (prog, opts, args))
-        return method(parser, rpc, opts, args)
+        return method(parser, opts, args)
 
 if __name__ == '__main__':
     sys.exit(main())
