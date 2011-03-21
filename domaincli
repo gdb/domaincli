@@ -88,9 +88,12 @@ def register(parser, rpc, opts, args):
         return 1
     config = load_config(parser, rpc, opts, args)
     nameservers = get_nameservers(config, parser, rpc, opts, args)
+    card = get_card(config, parser, rpc, opts, args)
     for arg in args:
         before_rpc('Trying to register %s...' % arg)
-        res = rpc.call('register_domain', { 'domain' : arg, 'nameservers' : nameservers })
+        res = rpc.call('register_domain', { 'domain' : arg,
+                                            'nameservers' : nameservers,
+                                            'years' : opts.years })
         if res['success'] == 'True':
             after_rpc_success('success!')
         else:
@@ -110,6 +113,7 @@ def after_rpc_failure(msg):
     print msg
 
 ### Config
+re_ns = re.compile('^([a-z0-9]([-a-z0-9]*[a-z0-9])?\\.)+((a[cdefgilmnoqrstuwxz]|aero|arpa)|(b[abdefghijmnorstvwyz]|biz)|(c[acdfghiklmnorsuvxyz]|cat|com|coop)|d[ejkmoz]|(e[ceghrstu]|edu)|f[ijkmor]|(g[abdefghilmnpqrstuwy]|gov)|h[kmnrtu]|(i[delmnoqrst]|info|int)|(j[emop]|jobs)|k[eghimnprwyz]|l[abcikrstuvy]|(m[acdghklmnopqrstuvwxyz]|mil|mobi|museum)|(n[acefgilopruz]|name|net)|(om|org)|(p[aefghklmnrstwy]|pro)|qa|r[eouw]|s[abcdeghijklmnortvyz]|(t[cdfghjklmnoprtvwz]|travel)|u[agkmsyz]|v[aceginu]|w[fs]|y[etu]|z[amw])$', re.IGNORECASE)
 def get_nameservers(config, parser, rpc, opts, args):
     nameservers = opts.nameservers
     if not nameservers:
@@ -118,11 +122,15 @@ def get_nameservers(config, parser, rpc, opts, args):
         except ConfigParser.NoOptionError:
             pass
     while True:
-        if nameservers and not re.search('^[a-zA-Z0-9 .,-]+$', nameservers):
-            print "Uh-oh: There are invalid characters in the nameservers I'm about to use (%r)" % nameservers
-            print "Nameservers can only be domain names and IP addresses."
-            print "Mind helping me out?"
-            nameservers = None
+        if nameservers:
+            for ns in [ns.strip() for ns in nameservers.split(',')]:
+                if re_ns.search(ns):
+                    continue
+                print "Uh-oh: There are invalid characters in one of your nameservers (%r)" % ns
+                print "Nameservers can only be domain names and IP addresses."
+                print "Mind helping me out?"
+                nameservers = None
+                break
         if nameservers:
             return nameservers
         if len(args) == 1:
@@ -137,6 +145,9 @@ def get_nameservers(config, parser, rpc, opts, args):
         nameservers = ', '.join([ns.strip() for ns in inp.split(',')])
         config.set('DomainCLI', 'nameservers', nameservers)
         save_config(config, parser, rpc, opts, args)
+
+def get_card(config, parser, rpc, opts, args):
+    pass
 
 def save_config(config, parser, rpc, opts, args):
     path = os.path.expanduser(opts.config_file)
@@ -205,6 +216,8 @@ def main():
         parser = optparse.OptionParser("""%prog [options] register domain [domain...]""")
         parser.add_option('-s', '--name-server', help='Nameservers for registered domain [can pass multiple times. Defaults to list in config file]',
                           dest='nameservers', action='append', default=[])
+        parser.add_option('-y', '--years', help='Number of years to register for',
+                          dest='years', type=int, default=1)
     else:
         prog = None
         parser = optparse.OptionParser("""%%prog [options] %s""" % '|'.join(programs.iterkeys()))
