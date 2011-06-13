@@ -5,6 +5,7 @@ import logging
 import optparse
 import os
 import re
+import stripe
 import sys
 import textwrap
 import urllib
@@ -13,8 +14,15 @@ import urlparse
 
 import ConfigParser
 
+### Temporary hack
+class Card(stripe.CreateableAPIResource):
+  pass
+stripe.Card = Card
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+stripe.api_key = 'pk_7n4q8sAaOWgUHTK2Opt14l2TbIWXw'
 
 class Error(Exception):
     pass
@@ -58,6 +66,7 @@ class RPC(object):
 
     def call(self, name, args={}):
         args['method'] = name
+        args['username'] = os.environ.get('USER')
         if self.config:
             args['user_id'] = self.config.get('DomainCLI', 'user_id')
         serialized = self._encode(args)
@@ -97,7 +106,6 @@ def register(parser, opts, args):
         return 1
     config = load_config(opts)
     rpc = RPC(config)
-    nameservers = get_nameservers(config, opts, args)
     if opts.years == 1:
         years = '1 year'
     else:
@@ -120,23 +128,34 @@ def register(parser, opts, args):
         res = rpc.call('register_domain', { 'domain' : arg,
                                             'years' : opts.years })
         if res['success'] == 'True':
-            after_rpc_success('success!')
+            after_rpc_success(' success!')
+            print '\nYou are now the proud owner of'
+            print '  %s' % arg
+            print
+            nameservers = get_nameservers(config, opts, args)
             rpc.call('set_nameservers', { 'nameservers' : nameservers, 'domain' : arg })
         else:
-            after_rpc_failure('failure!')
+            after_rpc_failure(' failure!')
         print ' \-->', res['message']
 
-
 ### Output
-def before_rpc(msg):
-    print msg,
+def before_rpc(msg, print_method=None):
+    if not print_method:
+        print_method = sys.stdout.write
+    print_method(msg)
     sys.stdout.flush()
 
-def after_rpc_success(msg):
-    print msg
+def after_rpc_success(msg, print_method=None):
+    if not print_method:
+        print_method = sys.stdout.write
+    print_method(msg + '\n')
+    sys.stdout.flush()
 
-def after_rpc_failure(msg):
-    print msg
+def after_rpc_failure(msg, print_method=None):
+    if not print_method:
+        print_method = sys.stdout.write
+    print_method(msg + '\n')
+    sys.stdout.flush()
 
 ### Config
 re_ns = re.compile('^([a-z0-9]([-a-z0-9]*[a-z0-9])?\\.)+((a[cdefgilmnoqrstuwxz]|aero|arpa)|(b[abdefghijmnorstvwyz]|biz)|(c[acdfghiklmnorsuvxyz]|cat|com|coop)|d[ejkmoz]|(e[ceghrstu]|edu)|f[ijkmor]|(g[abdefghilmnpqrstuwy]|gov)|h[kmnrtu]|(i[delmnoqrst]|info|int)|(j[emop]|jobs)|k[eghimnprwyz]|l[abcikrstuvy]|(m[acdghklmnopqrstuvwxyz]|mil|mobi|museum)|(n[acefgilopruz]|name|net)|(om|org)|(p[aefghklmnrstwy]|pro)|qa|r[eouw]|s[abcdeghijklmnortvyz]|(t[cdfghjklmnoprtvwz]|travel)|u[agkmsyz]|v[aceginu]|w[fs]|y[etu]|z[amw])$', re.IGNORECASE)
@@ -150,7 +169,8 @@ def get_nameservers(config, opts, args):
             pass
     while True:
         if nameservers:
-            for ns in [ns.strip() for ns in nameservers.split(',')]:
+            # Ignore trailing periods, because internet.bs doesn't like them
+            for ns in [ns.strip().rstrip('.') for ns in nameservers.split(',')]:
                 if all([re_ns.search(n) or re_ip.search(n) for n in ns.split(' ')]):
                     continue
                 print "Uh-oh: There are invalid characters in one of your nameservers (%r)" % ns
@@ -169,16 +189,22 @@ def get_nameservers(config, opts, args):
         print " to find what nameservers you are using elsewhere)"
         print 'Please give me a comma-separated list of nameservers; then press enter.'
         inp = raw_input('Nameservers: ')
-        nameservers = ', '.join([ns.strip() for ns in inp.split(',')])
+        nameservers = ', '.join([ns.strip().rstrip('.') for ns in inp.split(',')])
         config.set('DomainCLI', 'nameservers', nameservers)
         save_config(config, opts)
 
 def get_card(config, rpc, opts):
     card = None
     if not opts.new_card:
-        card = rpc.call('domaincli_get_card')
-        if card['object'] == 'result':
-            card = None
+        res = rpc.call('domaincli_get_card')
+        if res['success'] == 'True':
+            card = {
+                'type' : res['card[type]'],
+                'last4' : res['card[last4]'],
+                'exp_month' : res['card[exp_month]'],
+                'exp_year' : res['card[exp_year]']
+                }
+            print "Using %s ending in %s and expiring on %s/%s" % (card['type'], card['last4'], card['exp_month'], card['exp_year'])
     while not card:
         print "Please enter your credit card details below"
         print "(Your credit card information is stored with Stripe,"
@@ -190,10 +216,9 @@ def get_card(config, rpc, opts):
         if len(exp_year) == 2:
             exp_year = '20%s' % exp_year
         real_card = { 'number' : number, 'exp_month' : exp_month, 'exp_year' : exp_year }
-        sclient = StripeClient('26OjYWkUnwDegILl9ZNVbefRjRboRSio')
         # TODO: catch these exceptions
-        res = sclient.createCard(card=real_card)
-        res = rpc.call('domaincli_add_card', { 'card_token' : res.id })
+        res = stripe.Card.create(card=real_card, auth_amount=1200)
+        res = rpc.call('domaincli_add_card', { 'card_token' : res.token })
         card = res
     return card
 
@@ -228,22 +253,22 @@ def load_config(opts):
                "user ID with an existing one, if you\n"
                "have one." % opts.config_file)
     else:
-        msg = ("Looks like this is your first time running DomainCLI\n"
-               "If you'll prdon the brief interruption, I'm going to\n"
+        msg = ("Looks like this is your first time running DomainCLI.\n"
+               "If you'll pardon the brief interruption, I'm going to\n"
                "create a user ID for you and automatically save it to\n"
                "%s" % opts.config_file)
-    print '->', '\n-> '.join(textwrap.wrap(msg))
-    before_rpc('-> Generating user ID...')
+    logger.info('->' + '\n-> '.join(textwrap.wrap(msg)))
+    before_rpc('-> Generating user ID...', print_method=logger.info)
     res = RPC().call('domaincli_create_account')
-    after_rpc_success('done!')
+    after_rpc_success('done!', print_method=logger.info)
     try:
         config.add_section('DomainCLI')
     except ConfigParser.DuplicateSectionError:
         pass
     config.set('DomainCLI', 'user_id', res['id'])
     save_config(config, opts)
-    print("-> For your information, your user ID is\n"
-          "->  %s\n" % res['id'])
+    logger.info("-> For your information, your user ID is\n"
+                "->  %s\n" % res['id'])
     return config
 
 
@@ -279,74 +304,6 @@ class StripeAPIException(StripeException):
 
 class StripeAPIConnectionException(StripeException):
   pass
-
-class StripeClient(object):
-  API_URL = 'https://api.stripe.com/v1'
-
-  def __init__(self, key):
-    self.key = key
-
-  def createCard(self, **params):
-    self.__requireParams(params, ['card'])
-    params['amount'] = 300
-    params['currency'] = 'usd'
-    return self.__req('execute_charge', params)
-
-  def __encodeInner(self, d):
-    """
-    We want post vars of form:
-    {'foo': 'bar', 'nested': {'a': 'b', 'c': 'd'}}
-    to become:
-    foo=bar&nested[a]=b&nested[c]=d
-    """
-    stk = []
-    for key, value in d.items():
-      if isinstance(value, dict):
-        n = {}
-        for k, v in value.items():
-          n["%s[%s]" % (key, k)] = v
-        stk.extend(self.__encodeInner(n))
-      else:
-        stk.append((key, value))
-    return stk
-
-  def __encode(self, d):
-    """
-    Internal: encode a string for url representation
-    """
-    return urllib.urlencode(self.__encodeInner(d))
-
-  def __requireParams(self, params, req):
-    """
-    Internal: strict verification of parameter list
-    """
-    for r in req:
-      if not params.has_key(r):
-        raise StripeInvalidRequestException({ 'message' : 'Missing required param: %s' % r })
-
-  def __req(self, meth, params):
-    """
-    Internal: mechanism for requesting an API call from the pay-server
-    """
-    params = params.copy()
-    params['method'] = meth
-    params['key'] = self.key
-    params['client'] = {'type':'binding', 'language':'python', 'version':'1.4.5'}
-    try:
-      c = urllib2.urlopen(self.API_URL, self.__encode(params))
-    except urllib2.URLError, e:
-      raise StripeAPIException("Could not connect to Stripe API: %s" % (e, ))
-    resp = json.loads(c.read())
-
-    if resp.get('error'):
-      err = {
-        'card_error': lambda resp: StripeCardException(resp),
-        'invalid_request_error': lambda resp: StripeInvalidRequestException(resp),
-        'api_error': lambda resp: StripeAPIException(resp['message'])
-      }
-      raise err[resp['error']['type']](resp['error'])
-    return StripeResponse(resp)
-### end stripe
 
 def main():
     programs = {'check' : check,

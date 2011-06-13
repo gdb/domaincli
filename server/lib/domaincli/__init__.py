@@ -3,7 +3,8 @@ import json
 import logging
 import os
 import pymongo
-import pymongo.objectid
+import random
+import string
 import stripe
 import urllib
 import urllib2
@@ -26,9 +27,16 @@ class TheirFault(Error):
 class WhoKnowsWhoseFault(Error):
     pass
 
+
+def random_string(length=10):
+    pool = string.ascii_letters + string.digits
+    return ''.join(random.choice(pool) for x in range(length))
+
 class Config(object):
-    @staticmethod
-    def load():
+    config = None
+
+    @classmethod
+    def load(cls):
         search = ['~/.domaincli-server', os.path.join(os.path.dirname(__file__), '../../conf.yaml')]
         for path in search:
             path = os.path.expanduser(path)
@@ -36,7 +44,21 @@ class Config(object):
                 continue
             return yaml.load(open(path))
         raise OurFault('Could not find config file amongst search path of %r' % search)
-config = Config.load()
+
+    @classmethod
+    def getconf(cls, path):
+        if not cls.config:
+            cls.config = cls.load()
+
+        res = cls.config
+        for component in path.split('.'):
+            try:
+                res = res[component]
+            except KeyError:
+                raise WhoKnowsWhoseFault('Missing config component %s in config path %s.  You should update your conf.yaml or ~/.domaincli-server.' % (component, path))
+        return res
+        
+stripe.api_key = Config.getconf('stripe.api_key')
 
 class Translator(object):
     @classmethod
@@ -69,10 +91,10 @@ class DomainCLI(object):
     API_URL = 'https://testapi.internet.bs/'
 
     def __init__(self, api_key=None, password=None):
-        self.api_key = api_key or config['api_key']
+        self.api_key = api_key or Config.getconf('internet_bs.api_key')
         if not self.api_key:
             raise WhoKnowsWhoseFault('No api_key provided')
-        self.password = password or config['password']
+        self.password = password or Config.getconf('internet_bs.password')
         if not self.password:
             raise WhoKnowsWhoseFault('No password provided')
         self.db = pymongo.Connection().domaincli
@@ -141,11 +163,15 @@ class DomainCLI(object):
         domain = params['domain']
         if not any(domain.endswith('.' + tld) for tld in tlds):
             raise YourFault('Sorry, we currently only support the following TLDs: %s' % ', '.join(tlds))
+
+        # Make sure it's available, so we don't charge + refund needlessly
+        availability = self.rpc_check_availability({ 'domain' : domain })
+        if not availability['available']:
+            raise YourFault("Sorry, the domain %r isn't available." % (domain, ))
+
         user = self.get_user(params)
-        # TODO: a bit more defensive here
-        # card = user['card_hashes'][-1]
-        # sclient = Stripe(config['stripe_api_key'])
-        # sclient.execute(amount=1200, currency='usd', card=card['id'])
+        customer_id = user['token']
+        charge = stripe.Charge.create(amount=1200, currency='usd', customer=customer_id)
         years = '%dy' % int(params['years'])
         # TODO: not everything supports private whois:
         # 'privateWhois' : 'FULL'
@@ -181,6 +207,7 @@ class DomainCLI(object):
                 'message' : 'Congatulations!  You now own %s.' % (domain, )
                 }
         else:
+            charge.refund()
             return {
                 'object' : 'result',
                 'success' : False,
@@ -221,35 +248,47 @@ class DomainCLI(object):
                 }
 
     def rpc_domaincli_create_account(self, params):
-        objid = self.db.users.insert({})
+        token = 'ac_' + random_string()
+        email = 'client+%s@domaincli.com' % params.get('username', 'unknown')
+        self.db.users.insert({ 'token' : token })
+        stripe.Customer.create(id=token, email=email, description='Created by domaincli')
         return {
             'object' : 'result',
             'success' : True,
-            'id' : str(objid)
+            'id' : token
             }
 
     def rpc_domaincli_get_card(self, params):
         user = self.get_user(params)
+        customer = stripe.Customer.retrieve(user['token'])
         try:
-            hash = user['card_hashes']
+            card = customer['active_card']
         except KeyError:
             return {
                 'object' : 'result',
                 'success' : False
                 }
         else:
-            return hash[-1]
+            return {
+                'object' : 'result',
+                'success' : True,
+                'card' : {
+                    'type' : card.type,
+                    'exp_month' : '%02d' % card.exp_month,
+                    'exp_year' : card.exp_year,
+                    'last4' : card.last4
+                    }
+                }
 
     def rpc_domaincli_add_card(self, params):
-        # TODO: do more once retrieve_card is a thing
         user = self.get_user(params)
+        customer_id = user['token']
         card_token = params['card_token']
-        card_hashes = user.setdefault('card_hashes', [])
-        card_hashes.append({
-                'object' : 'card',
-                'id' : card_token
-                })
-        self.db.users.update({'_id' : user['_id']}, {'$set' : {'card_hashes' : card_hashes }})
+
+        customer = stripe.Customer(customer_id)
+        customer.card = card_token
+        customer.save()
+
         return {
             'object' : 'result'
             }
@@ -265,6 +304,7 @@ class DomainCLI(object):
         except KeyError:
             raise YourFault('Missing user_id.  Seems like a bug in the client library?')
         try:
-            return self.db.users.find({'_id' : pymongo.objectid.ObjectId(user_id)})[0]
+            return self.db.users.find_one({'token' : user_id})
         except IndexError:
             raise YourFault('Invalid user_id.  Check your config file (~/.domaincli by default)')
+
