@@ -19,7 +19,7 @@ class Card(stripe.CreateableAPIResource):
   pass
 stripe.Card = Card
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger(__name__)
 
 # TODO: retrieve this from domaincli server
@@ -93,7 +93,7 @@ def check(parser, opts, args):
     config = load_config(opts)
     rpc = RPC(config)
     for arg in args:
-        before_rpc('Checking status of %s...' % (arg, ))
+        before_rpc('Checking status of %s... ' % (arg, ))
         sys.stdout.flush()
         res = rpc.call('check_availability', { 'domain' : arg })
         if res['available'] == 'True':
@@ -125,18 +125,18 @@ def register(parser, opts, args):
     if ok.lower() == 'n':
         print 'As you wish.  Aborting without making a purchase!'
     for arg in args:
-        before_rpc('Trying to register %s...' % arg)
+        before_rpc('Trying to register %s... ' % arg)
         res = rpc.call('register_domain', { 'domain' : arg,
                                             'years' : opts.years })
         if res['success'] == 'True':
-            after_rpc_success(' success!')
+            after_rpc_success('success!')
             print '\nYou are now the proud owner of'
             print '  %s' % arg
             print
             nameservers = get_nameservers(config, opts, args)
             rpc.call('set_nameservers', { 'nameservers' : nameservers, 'domain' : arg })
         else:
-            after_rpc_failure(' failure!')
+            after_rpc_failure('failure!')
         print ' \-->', res['message']
 
 ### Output
@@ -259,7 +259,7 @@ def load_config(opts):
                "create a user ID for you and automatically save it to\n"
                "%s" % opts.config_file)
     logger.info('->' + '\n-> '.join(textwrap.wrap(msg)))
-    before_rpc('-> Generating user ID...', print_method=logger.info)
+    before_rpc('-> Generating user ID... ', print_method=logger.info)
     res = RPC().call('domaincli_create_account')
     after_rpc_success('done!', print_method=logger.info)
     try:
