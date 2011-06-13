@@ -22,7 +22,9 @@ stripe.Card = Card
 logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger(__name__)
 
-# TODO: retrieve this from domaincli server
+# This key isn't sensitive, but people's code will break if I ever
+# roll it.  TODO: retrieve the key on demand from the domaincli
+# server.
 stripe.api_key = 'pk_7n4q8sAaOWgUHTK2Opt14l2TbIWXw'
 
 class Error(Exception):
@@ -214,8 +216,8 @@ def get_card(config, rpc, opts):
         print " a PCI level-one compliant payment processor, and never"
         print " touches our servers.)"
         number = raw_input('Card number: ')
-        exp_month = raw_input('Expire month: ')
-        exp_year = raw_input('Expire year: ')
+        exp_month = raw_input('Expiry month: ')
+        exp_year = raw_input('Expiry year: ')
         if len(exp_year) == 2:
             exp_year = '20%s' % exp_year
         real_card = { 'number' : number, 'exp_month' : exp_month, 'exp_year' : exp_year }
