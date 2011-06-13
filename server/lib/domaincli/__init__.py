@@ -175,7 +175,10 @@ class DomainCLI(object):
 
         user = self.get_user(params)
         customer_id = user['token']
-        charge = stripe.Charge.create(amount=1200, currency='usd', customer=customer_id)
+        charge = stripe.Charge.create(amount=1200,
+                                      currency='usd',
+                                      customer=customer_id,
+                                      description='%s buying %s' % (customer_id, domain))
         years = '%dy' % int(params['years'])
         # TODO: not everything supports private whois:
         # 'privateWhois' : 'FULL'
