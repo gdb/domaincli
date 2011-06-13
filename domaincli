@@ -122,8 +122,10 @@ def register(parser, opts, args):
     print '*' * len(total_msg)
     card = get_card(config, rpc, opts)
     ok = raw_input('Are you cool with this purchase? [Yn] ')
-    if ok.lower() == 'n':
+    print ok
+    if ok.lower()[0:1] == 'n':
         print 'As you wish.  Aborting without making a purchase!'
+        return
     for arg in args:
         before_rpc('Trying to register %s... ' % arg)
         res = rpc.call('register_domain', { 'domain' : arg,
