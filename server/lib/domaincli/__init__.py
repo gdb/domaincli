@@ -253,9 +253,10 @@ class DomainCLI(object):
 
     def rpc_domaincli_create_account(self, params):
         token = 'ac_' + random_string()
-        email = 'client+%s@domaincli.com' % params.get('username', 'unknown')
+        username = params.get('username', 'unknown-user')
+        email = 'client+%s@domaincli.com' % username
         self.db.users.insert({ 'token' : token })
-        stripe.Customer.create(id=token, email=email, description='Created by domaincli')
+        stripe.Customer.create(id=token, email=email, description='%s (%s)' % (username, token))
         return {
             'object' : 'result',
             'success' : True,
