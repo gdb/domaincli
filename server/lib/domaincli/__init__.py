@@ -88,7 +88,8 @@ class Translator(object):
         return self._get_answer(lookup, result)
 
 class DomainCLI(object):
-    API_URL = 'https://testapi.internet.bs/'
+    API_URL = 'https://api.internet.bs/'
+    # API_URL = 'https://testapi.internet.bs/'
 
     def __init__(self, api_key=None, password=None):
         self.api_key = api_key or Config.getconf('internet_bs.api_key')
