@@ -166,6 +166,9 @@ class DomainCLI(object):
 
         # Make sure it's available, so we don't charge + refund needlessly
         availability = self.rpc_check_availability({ 'domain' : domain })
+        if availability['object'] == 'error':
+            logger.error(availability)
+            raise YourFault("Sorry, something went wrong on our backend.  Please contact support@domaincli.com." % (domain, ))
         if not availability['available']:
             raise YourFault("Sorry, the domain %r isn't available." % (domain, ))
 
