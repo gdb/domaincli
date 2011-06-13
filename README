@@ -14,11 +14,8 @@ DomainCLI is a simple command-line interface for registering domain names:
 
 == Client Installation ==
 
-Download and run the 'domaincli' script on your machine.  That's it.
-
-There should be no dependencies beyond the Python that came with your Linux or
-Mac.  If you run into any compatibility or dependency problems, please email
-gdb@gregbrockman.com.
+Download and run the 'domaincli' script on your machine.  Run
+'easy_install stripe'.  That's it.
 
 By default, you'll be using the domaincli.com servers to register domains, but
 you're welcome to set up your own DomainCLI server instance as described below.
