@@ -4,13 +4,19 @@ DomainCLI is a simple command-line interface for registering domain names:
 
   gdb@inferno:~$ domaincli check domaincli.com
   Checking status of domaincli.com... Available!
+
   gdb@inferno:~$ domaincli register domaincli.com
   ***********************************************
   * Your total comes to $12 (1 year x 1 domain) *
   ***********************************************
+  Using American Express ending in 7314 and expiring on 02/2016
   Are you cool with this purchase? [Yn] y
   Trying to register domaincli.com... success!
-   \--> Congatulations!  You now own domaincli.com.
+
+  You are now the proud owner of
+    domaincli.com
+
+  \--> Congatulations!  You now own domaincli.com.
 
 == Client Installation ==
 
