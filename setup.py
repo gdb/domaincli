@@ -6,7 +6,7 @@ path, script = os.path.split(sys.argv[0])
 os.chdir(os.path.abspath(path))
 
 setup(name='domaincli',
-      version='0.0.1',
+      version='0.0.2',
       description='Register domains from the command line',
       author='Greg Brockman',
       author_email='gdb@gregbrockman.com',

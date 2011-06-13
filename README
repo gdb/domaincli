@@ -14,7 +14,7 @@ DomainCLI is a simple command-line interface for registering domain names:
 
 == Client Installation ==
 
-Run 'sudo easy_install domaincli'.  That's it.
+Run 'sudo easy_install stripe domaincli'.  That's it.
 
 By default, you'll be using the domaincli.com servers to register domains, but
 you're welcome to set up your own DomainCLI server instance as described below.
