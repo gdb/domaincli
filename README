@@ -9,28 +9,34 @@ DomainCLI is a simple command-line interface for registering domain names:
   * Your total comes to $12 (1 year x 1 domain) *
   ***********************************************
   Are you cool with this purchase? [Yn] y
-  Trying to register asnthoeusnhoaeu.com... success!
+  Trying to register domaincli.com... success!
    \--> Congatulations!  You now own domaincli.com.
 
 == Client Installation ==
 
-Download and run the 'domaincli' script on your machine.  Run
-'easy_install stripe'.  That's it.
+Run 'sudo easy_install domaincli'.  That's it.
 
 By default, you'll be using the domaincli.com servers to register domains, but
 you're welcome to set up your own DomainCLI server instance as described below.
 
 == Server Installation ==
 
-Currently, the domaincli server is built on top of the internetbs.com API.  The
-file server/conf.sample.yaml contains test credentials for the API, so you can
-develop without doing anything special.  Copy the file server/conf.sample.yaml
-to server/conf.yaml and you should be good to go (modulo dependencies).  Run
-'server/bin/domaincli-server' to get started.
+Currently, the domain registration functionality is built on top of
+the internet.bs API.  Payment functionality is built on the stripe.com
+API.  In order to set up a domaincli server, you'll need an account on
+both.
 
-To run in production, you'd have to sign up for an internetbs.com API reseller
-account.  It's pretty painless to do, but it does require a $65 minimum deposit
-to get up and running - sorry.
+Signing up for an internet.bs API reseller account is pretty painless,
+but it does require a $65 minimum deposit to get up and running -
+sorry.
+
+Stripe is currently in a private beta, but if you email me
+(gdb@gregbrockman.com) I'll see if I can get you an invite.
+
+Copy server/conf.sample.yaml to server/conf.yaml, add a test-mode API
+key from Stripe (the internet.bs test credentials will work), and
+you'll be good to go (modulo dependencies).  Run
+'server/bin/domaincli-server' to start the server.
 
 == Current functionality ==
 
