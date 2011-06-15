@@ -10,7 +10,7 @@ setup(name='domaincli',
       description='Register domains from the command line',
       author='Greg Brockman',
       author_email='gdb@gregbrockman.com',
-      url='https://github.com/thegdb/domaincli',
+      url='http://domaincli.com',
       scripts=['domaincli'],
       install_requires='stripe'
 )
