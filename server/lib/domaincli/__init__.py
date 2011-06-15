@@ -233,25 +233,16 @@ class DomainCLI(object):
         # TODO: set up deletion
         errors = []
         successes = []
-        for ns in nameservers.split(','):
-            ns = ns.strip()
-            res = self._call('Domain/DnsRecord/Add', type='NS', value=ns, fullrecordname=domain)
-            if Translator.set_nameservers(res['status']):
-                successes.append(ns)
-            else:
-                errors.append(res['message'])
-        if errors:
-            msg = ' '.join(errors)
-            if successes:
-                msg += " But that's ok, because I successfully set the following DNS servers: %s" % ', '.join(successes)
-            return {
-                'object' : 'error',
-                'message' : msg
-                }
-        else:
+        res = self._call('Domain/Update', domain=domain, ns_list=nameservers)
+        if Translator.set_nameservers(res['status']):
             return {
                 'object' : 'result',
                 'message' : 'Set nameservers to %s' % nameservers
+                }
+        else:
+            return {
+                'object' : 'error',
+                'message' : res['message']
                 }
 
     def rpc_domaincli_create_account(self, params):
