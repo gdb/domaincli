@@ -59,6 +59,7 @@ nameservers.  All domains (currently com, info, net, org, us) are $12.
 - Tons of generic domain actions (list domains, transfer domains).
 - Suggest possible domain names you might want to buy (such as by concatenating
   random words).
+- Collect email address so people can be emailed with domain renewal reminders.
 
 This project is mainly a proof-of-concept, so let me know if there are any
 particularly interesting features you'd like to see developed.
