@@ -52,12 +52,13 @@ nameservers.  All domains (currently com, info, net, org, us) are $12.
 
 == Future directions ==
 
-- Add automatic Route53 setup, allowing complete DNS control from the
-  command-line.
+- Allow creation of DNS records from the command line
 - Automatically set up Google Apps For Your Domain
 - Improve UI and onboarding flow (shouldn't prompt for nameservers during initial
   domain purchase, etc.)
-- Tons of generic domain actions.
+- Tons of generic domain actions (list domains, transfer domains).
+- Suggest possible domain names you might want to buy (such as by concatenating
+  random words).
 
 This project is mainly a proof-of-concept, so let me know if there are any
 particularly interesting features you'd like to see developed.

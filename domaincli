@@ -92,6 +92,7 @@ def check(parser, opts, args):
     if len(args) == 0:
         parser.print_help()
         return 1
+    results = {}
     config = load_config(opts)
     rpc = RPC(config)
     for arg in args:
@@ -99,14 +100,35 @@ def check(parser, opts, args):
         sys.stdout.flush()
         res = rpc.call('check_availability', { 'domain' : arg })
         if res['available'] == 'True':
-            after_rpc_success('Available!')
+            after_rpc_success('available!')
+            results[arg] = True
         else:
-            after_rpc_failure('Taken :(!')
+            after_rpc_failure('not available.  :(')
+            results[arg] = False
+    return results
 
 def register(parser, opts, args):
     if len(args) == 0:
         parser.print_help()
         return 1
+    results = check(parser, opts, args)
+    available = [domain for domain, avail in results.iteritems() if avail]
+    not_available = [domain for domain, avail in results.iteritems() if not avail]
+    if not_available:
+      print
+      if len(not_available) == 1:
+        print "Sorry, I can't register %s for you.  You should try again" % (not_available[0], )
+        print "with an even better domain (say, get%s)!" % (not_available[0], )
+      else:
+        print "Sorry, all of %s are taken, so I can't register them for you." % (', '.join(not_available), )
+      if available:
+        print
+        if len(available) == 1:
+          print "I can, however, register %s for you!" % (available[0], )
+        elif len(available) > 1:
+          print "I can, however, register all of %s for you!" % (', '.join(available), )
+        print "Just run 'domaincli register %s'" % (' '.join(available), )
+      return
     config = load_config(opts)
     rpc = RPC(config)
     if opts.years == 1:
