@@ -268,6 +268,11 @@ class DomainCLI(object):
 
     def rpc_domaincli_get_card(self, params):
         user = self.get_user(params)
+        if not user:
+            return {
+                'object' : 'result',
+                'success' : False
+                }
         customer = stripe.Customer.retrieve(user['token'])
         try:
             card = customer['active_card']
