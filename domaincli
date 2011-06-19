@@ -92,6 +92,9 @@ def check(parser, opts, args):
     if len(args) == 0:
         parser.print_help()
         return 1
+    check_backend(parser, opts, args)
+
+def check_backend(parser, opts, args):
     results = {}
     config = load_config(opts)
     rpc = RPC(config)
@@ -111,7 +114,7 @@ def register(parser, opts, args):
     if len(args) == 0:
         parser.print_help()
         return 1
-    results = check(parser, opts, args)
+    results = check_backend(parser, opts, args)
     available = [domain for domain, avail in results.iteritems() if avail]
     not_available = [domain for domain, avail in results.iteritems() if not avail]
     if not_available:
