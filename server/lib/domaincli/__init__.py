@@ -211,7 +211,7 @@ class DomainCLI(object):
             return {
                 'object' : 'result',
                 'success' : True,
-                'message' : 'Congatulations!  You now own %s.' % (domain, )
+                'message' : 'Congatulations!  You are good to go with %s.' % (domain, )
                 }
         else:
             charge.refund()
