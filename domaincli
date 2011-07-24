@@ -15,9 +15,9 @@ import urlparse
 import ConfigParser
 
 ### Temporary hack
-class Card(stripe.CreateableAPIResource):
+class Token(stripe.CreateableAPIResource):
   pass
-stripe.Card = Card
+stripe.Token = Token
 
 logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger(__name__)
@@ -246,7 +246,7 @@ def get_card(config, rpc, opts):
             exp_year = '20%s' % exp_year
         real_card = { 'number' : number, 'exp_month' : exp_month, 'exp_year' : exp_year }
         # TODO: catch these exceptions
-        res = stripe.Card.create(card=real_card, auth_amount=1200)
+        res = stripe.Token.create(card=real_card, amount=1200)
         res = rpc.call('domaincli_add_card', { 'card_token' : res.token })
         card = res
     return card
