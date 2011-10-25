@@ -14,11 +14,6 @@ import urlparse
 
 import ConfigParser
 
-### Temporary hack
-class Token(stripe.CreateableAPIResource):
-  pass
-stripe.Token = Token
-
 logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger(__name__)
 
