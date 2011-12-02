@@ -242,7 +242,7 @@ def get_card(config, rpc, opts):
         real_card = { 'number' : number, 'exp_month' : exp_month, 'exp_year' : exp_year }
         # TODO: catch these exceptions
         res = stripe.Token.create(card=real_card, amount=1200)
-        res = rpc.call('domaincli_add_card', { 'card_token' : res.token })
+        res = rpc.call('domaincli_add_card', { 'card_token' : res.id })
         card = res
     return card
 
